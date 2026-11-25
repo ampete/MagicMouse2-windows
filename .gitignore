@@ -1,0 +1,20 @@
+# Build output
+build/
+*.obj
+*.pdb
+*.ilk
+*.exe
+
+# NuGet (WDK/SDK restored per project)
+packages/
+
+# Visual Studio
+.vs/
+*.user
+*.VC.db
+*.VC.opendb
+*.aps
+
+# Signing material
+*.pfx
+*.cer

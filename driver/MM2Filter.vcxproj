@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    WDK comes from NuGet (packages.config), not a system-wide WDK install.
+    Restore first:  nuget restore driver\packages.config -PackagesDirectory packages
+    (or let Visual Studio restore it automatically on build).
+  -->
+  <PropertyGroup>
+    <WdkNuGetVersion>10.0.28000.2526</WdkNuGetVersion>
+    <PackagesDir>$(MSBuildThisFileDirectory)..\packages\</PackagesDir>
+  </PropertyGroup>
+  <Import Project="$(PackagesDir)Microsoft.Windows.SDK.CPP.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.props" Condition="Exists('$(PackagesDir)Microsoft.Windows.SDK.CPP.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.props')" />
+  <Import Project="$(PackagesDir)Microsoft.Windows.SDK.CPP.x64.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.x64.props" Condition="Exists('$(PackagesDir)Microsoft.Windows.SDK.CPP.x64.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.x64.props')" />
+  <Import Project="$(PackagesDir)Microsoft.Windows.WDK.x64.$(WdkNuGetVersion)\build\native\Microsoft.Windows.WDK.x64.props" Condition="Exists('$(PackagesDir)Microsoft.Windows.WDK.x64.$(WdkNuGetVersion)\build\native\Microsoft.Windows.WDK.x64.props')" />
+
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6E0C6A43-2B8D-4E8B-9C3A-7A1F2D5B9E01}</ProjectGuid>
+    <TemplateGuid>{1bc93793-694f-48fe-9372-81e2b05556fd}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration>Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <RootNamespace>MM2Filter</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+    <!-- KMDF 1.33 = Windows 11 22H2 and later. -->
+    <KMDF_VERSION_MAJOR>1</KMDF_VERSION_MAJOR>
+    <KMDF_VERSION_MINOR>33</KMDF_VERSION_MINOR>
+    <Driver_SpectreMitigation>Spectre</Driver_SpectreMitigation>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Debug'">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <PropertyGroup>
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <OutDir>$(MSBuildThisFileDirectory)..\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\build\obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <!--
+      Signing is OFF by default so a plain build never touches certificate stores.
+      Use scripts\sign-testcert.ps1 (see README), or build with /p:SignMode=TestSign
+      to let the WDK create/use its auto "WDKTestCert" in your personal store.
+    -->
+    <SignMode Condition="'$(SignMode)'==''">Off</SignMode>
+    <EnableInf2cat>true</EnableInf2cat>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <DriverSign>
+      <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
+    </DriverSign>
+    <Inf>
+      <TimeStamp>*</TimeStamp>
+    </Inf>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="Driver.c" />
+    <ClCompile Include="Bth.c" />
+    <ClCompile Include="Control.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MM2Filter.h" />
+    <ClInclude Include="..\shared\mm2_ioctl.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="MM2Filter.inf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <FilesToPackage Include="$(TargetPath)" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(PackagesDir)Microsoft.Windows.SDK.CPP.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.targets" Condition="Exists('$(PackagesDir)Microsoft.Windows.SDK.CPP.$(WdkNuGetVersion)\build\native\Microsoft.Windows.SDK.cpp.targets')" />
+
+  <Target Name="EnsureWdkNuGetRestored" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(PackagesDir)Microsoft.Windows.WDK.x64.$(WdkNuGetVersion)\build\native\Microsoft.Windows.WDK.x64.props')"
+           Text="WDK NuGet package missing. Run: nuget restore driver\packages.config -PackagesDirectory packages" />
+  </Target>
+</Project>

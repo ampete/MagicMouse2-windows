@@ -1,0 +1,77 @@
+;
+; MM2Filter.inf
+;
+; Extension INF: adds MM2Filter.sys as a LOWER filter under the in-box HidBth
+; driver for the Apple Magic Mouse 2 (Lightning) over Bluetooth. hidbth.inf
+; stays the function driver; this package only contributes the filter.
+;
+; Hardware ID taken from the paired device:
+;   pnputil /enum-devices /connected /class HIDClass /ids
+;   -> BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0269
+;      (00001124 = HID service UUID, VID 0x004C = Apple's Bluetooth SIG ID,
+;       PID 0x0269 = Magic Mouse 2)
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Extension
+ClassGuid   = {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+ExtensionId = {889BD831-75CA-4DF4-BA7F-CBCCFE16546F}
+Provider    = %ProviderName%
+CatalogFile = MM2Filter.cat
+DriverVer   = 01/01/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+MM2Filter.sys = 1,,
+
+; AddFilter in an extension INF needs Windows 10 1903 (18362) or later.
+[Manufacturer]
+%MfgName% = MM2, NT$ARCH$.10.0...18362
+
+[MM2.NT$ARCH$.10.0...18362]
+%MM2.DeviceDesc% = MM2Filter_Inst, BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0269
+; Magic Mouse (USB-C, 2024) reportedly uses PID 0x0323 with the same protocol.
+; Untested - uncomment only if you have one:
+;%MM2.DeviceDesc% = MM2Filter_Inst, BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0323
+
+[MM2Filter_Inst.NT]
+CopyFiles = MM2Filter_CopyFiles
+
+[MM2Filter_CopyFiles]
+MM2Filter.sys
+
+[MM2Filter_Inst.NT.Filters]
+AddFilter = MM2Filter,, MM2Filter_FilterSection
+
+[MM2Filter_FilterSection]
+FilterPosition = Lower
+
+[MM2Filter_Inst.NT.Services]
+AddService = MM2Filter,, MM2Filter_Service
+
+[MM2Filter_Service]
+DisplayName   = %MM2.ServiceDesc%
+ServiceType   = 1               ; SERVICE_KERNEL_DRIVER
+StartType     = 3               ; SERVICE_DEMAND_START
+ErrorControl  = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary = %13%\MM2Filter.sys
+
+[MM2Filter_Inst.NT.Wdf]
+KmdfService = MM2Filter, MM2Filter_WdfSect
+
+[MM2Filter_WdfSect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+ProviderName      = "MM2 open-source driver"
+MfgName           = "MM2 open-source driver"
+DiskName          = "MM2Filter installation disk"
+MM2.DeviceDesc    = "Magic Mouse 2 multitouch filter"
+MM2.ServiceDesc   = "Magic Mouse 2 multitouch filter (lower filter under HidBth)"
